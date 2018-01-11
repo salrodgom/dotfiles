@@ -1,0 +1,12 @@
+Host hal
+    HostName hal9000.tudelft.nl
+    User     jose
+Host upo
+    HostName 192.168.32.120
+    User     salvador
+Host ganglia
+    HostName hpccluster.upo.es
+    User     salrodgom
+Host bob
+    Hostname alhambra.ugr.es
+    User     salrodgom.upo.es
