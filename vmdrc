@@ -1,0 +1,59 @@
+
+after idle {
+    # create dummy molecule with one atom
+    set mol [mol new atoms 1]
+    set sel [atomselect $mol all]
+    # add items to color categories
+    $sel set name E
+    $sel set type E
+    $sel set name B
+    $sel set type B
+    $sel set type F
+    $sel set name F
+    # now we can define colors
+    color Name B pink
+    color Name C green
+    color Name F lime
+    color Type B pink
+    color Type C green
+    color Type F lime
+    # clean up
+    $sel delete
+    mol delete $mol
+}
+
+user add key o {display projection orthographic}
+user add key p {display projection perspective}
+user add key d { if {[display get rendermode] != "Normal" } {display rendermode Normal} {display rendermode GLSL}}
+user add key D { if {[display get depthcue] != "on" } {display depthcue on} {display depthcue off}}
+# update bonds during animation
+proc adj_bonds {args} { 
+    mol bondsrecalc [lindex $args 1]
+}
+trace add variable ::vmd_frame write adj_bonds
+
+proc reset_viz {molid} {
+  # operate only on existing molecules
+  if {[lsearch [molinfo list] $molid] >= 0} {
+    set numrep [molinfo $molid get numreps]
+    for {set i 0} {$i < $numrep} {incr i} {
+      mol delrep $i $molid
+    }
+    mol color Element
+    mol selection all
+    mol addrep $molid
+  } 
+}
+
+proc reset_viz_proxy {args} {
+  foreach {fname molid rw} $args {}
+  eval "after idle {reset_viz $molid}"
+}
+
+## hook up the function.
+trace variable vmd_initialize_structure w reset_viz_proxy
+# take care of molecule loaded at start.
+after idle { reset_viz 0 }
+display projection orthographic
+menu main on
+display axes off

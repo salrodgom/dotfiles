@@ -1,0 +1,127 @@
+#!/bin/bash
+buf () { filename=$1; filetime=$(date +%Y%m%d_%H%M%S); cp ${filename} ${filename}_${filetime}; }
+pathmunge () {
+  # Add paths to PATH
+  if test -d $1 && ! echo $PATH | /bin/egrep -q "(^|:)$1($|:)" ; then
+    if [ "$2" = "after" ] ; then
+      PATH=$PATH:$1
+    else
+      PATH=$1:$PATH
+    fi
+  fi
+}
+
+function calc() {
+  # Simple calculator
+	local result="";
+	result="$(printf "scale=10;$*\n" | bc --mathlib | tr -d '\\\n')";
+	#                       └─ default (when `--mathlib` is used) is 20
+	#
+	if [[ "$result" == *.* ]]; then
+		# improve the output for decimal numbers
+		printf "$result" |
+		sed -e 's/^\./0./'        `# add "0" for cases like ".5"` \
+		    -e 's/^-\./-0./'      `# add "0" for cases like "-.5"`\
+		    -e 's/0*$//;s/\.$//';  # remove trailing zeros
+	else
+		printf "$result";
+	fi;
+	printf "\n";
+}
+
+function cp_p () {
+  # Copy with progress
+  rsync -WavP --human-readable --progress $1 $2
+}
+
+function fs() {
+  # Determine size of a file or total size of a directory
+	if du -b /dev/null > /dev/null 2>&1; then
+		local arg=-sbh;
+	else
+		local arg=-sh;
+	fi;
+	if [[ -n "$@" ]]; then
+		du $arg -- "$@";
+	else
+		du $arg .[^.]* *;
+	fi;
+}
+
+function extract () {
+  # Extra many types of compressed packages
+  if [ -f $1 ]; then
+    case $1 in
+      *.tar.bz2) tar -jxvf $1 ;;
+      *.tar.gz) tar -zxvf $1 ;;
+      *.bz2) bunzip2 $1 ;;
+      *.dmg) hdiutil mount $1 ;;
+      *.gz) gunzip $1 ;;
+      *.tar) tar -xvf $1 ;;
+      *.tbz2) tar -jxvf $1 ;;
+      *.tgz) tar -zxvf $1 ;;
+      *.zip) unzip $1 ;;
+      *.ZIP) unzip $1 ;;
+      *.pax) cat $1 | pax -r ;;
+      *.pax.Z) uncompress $1 —stdout | pax -r ;;
+      *.Z) uncompress $1 ;;
+      *) echo "'$1' cannot be extracted/mounted via extract()";;
+   esac
+  else
+    echo "'$1' is not a valid file to extract"
+  fi
+}
+
+function find-links () {
+  # Find hard/symbolic-links of a linked-file
+  inum=`ls -Ldi $1 | awk '{print $1}'`;
+  if [ $# -eq 0 ] ; then
+    echo "find-links, find hard/symbolic-links of a linked-file";
+    echo "Usage:";
+    echo "  find-links linked-file_name [path]";
+  elif [ $# -eq 2 ] ; then
+    find $2 -follow -inum $inum;
+  else
+    find . -follow -inum $inum;
+  fi;
+}
+
+function find-broken-links () {
+  # Find broken symbolic-links into a path (is not specified . is used)
+  if [ $# -eq 0 ] ; then
+    find . -type l -! -exec test -e {} \; -print;
+  elif [ $# -eq 1 ] ; then
+    find $1 -type l -! -exec test -e {} \; -print;
+  fi;
+}
+
+function find-duplicates () {
+ # Find duplicate files into a path (is not specified . is used)
+  if [ $# -eq 0 ] ; then
+    find . -not -empty -type f -printf "%s\n" | sort -rn | uniq -d | xargs -I{} -n1 find -type f -size {}c -print0 | xargs -0 md5sum | sort | uniq -w32 --all-repeated=separate;
+  elif [ $# -eq 1 ] ; then
+    find $1 -not -empty -type f -printf "%s\n" | sort -rn | uniq -d | xargs -I{} -n1 find -type f -size {}c -print0 | xargs -0 md5sum | sort | uniq -w32 --all-repeated=separate;
+  fi;
+}
+
+function find-zero-size () {
+  # Find zero size files
+  find $1 -type f -size 0
+}
+
+function gifify() {
+  # Create animated gifs from any video
+  # from alex sexton   gist.github.com/SlexAxton/4989674
+  if [[ -n "$1" ]]; then
+	if [[ $2 == '--good' ]]; then
+	  ffmpeg -i $1 -r 10 -vcodec png out-static-%05d.png
+	  time convert -verbose +dither -layers Optimize -resize 900x900\> out-static*.png  GIF:- | gifsicle --colors 128 --delay=5 --loop --optimize=3 --multifile - > $1.gif
+	  rm out-static*.png
+	else
+	  ffmpeg -i $1 -s 600x400 -pix_fmt rgb24 -r 10 -f gif - | gifsicle --optimize=3 --delay=3 > $1.gif
+	fi
+  else
+	echo "proper usage: gifify <input_movie.mov>. You DO need to include extension."
+  fi
+}
+

@@ -1,0 +1,13 @@
+#~/.bash/paths
+source ~/.bash/functions
+pathmunge $HOME/bin after
+pathmunge $HOME/RASPA/simulations/bin/ after
+pathmunge $HOME/SOD/sod0.26/exe/ after
+pathmunge $HOME/anaconda3/bin after
+#if [ -d /media/mcplatano/discaso/vingilot ] ; then
+# export HOME_extension=/media/mcplatano/discaso/vingilot/
+# . ${HOME_extension}/bashrc
+# export PATH=$PATH:${HOME_extension}/bin
+# echo "Add home extension in discaso"
+# echo $PATH
+#fi
